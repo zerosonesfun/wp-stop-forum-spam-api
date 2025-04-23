@@ -1,7 +1,7 @@
 <?php
 /**
- * Admin settings + manual “Report IP” form
- * for Wilcosky Stop Forum Spam API plugin.
+ * Admin settings & manual “Report IP” form
+ * for the Wilcosky Stop Forum Spam API plugin.
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -19,7 +19,7 @@ function wilcosky_stop_forum_spam_register_settings() {
 add_action( 'admin_init', 'wilcosky_stop_forum_spam_register_settings' );
 
 /**
- * Add the plugin page under Settings.
+ * Add the plugin page under Settings → Stop Forum Spam.
  */
 function wilcosky_stop_forum_spam_admin_menu() {
     add_options_page(
@@ -41,6 +41,7 @@ function wilcosky_stop_forum_spam_settings_page() {
         <h1><?php esc_html_e( 'Stop Forum Spam Settings', 'wilcosky-stop-forum-spam' ); ?></h1>
 
         <?php
+        // Show any settings or report notices
         settings_errors( 'wilcosky_stop_forum_spam_settings' );
         settings_errors( 'wilcosky_sfs_report' );
         ?>
@@ -74,7 +75,10 @@ function wilcosky_stop_forum_spam_settings_page() {
         <hr>
 
         <h2><?php esc_html_e( 'Report an IP to StopForumSpam', 'wilcosky-stop-forum-spam' ); ?></h2>
-        <form method="post">
+        <form
+            method="post"
+            action="<?php echo esc_url( admin_url( 'options-general.php?page=wilcosky-stop-forum-spam' ) ); ?>"
+        >
             <?php wp_nonce_field( 'wilcosky_sfs_report_ip_action', 'wilcosky_sfs_report_ip_nonce' ); ?>
             <table class="form-table">
                 <tr>
@@ -127,6 +131,7 @@ function wilcosky_stop_forum_spam_settings_page() {
                     </td>
                 </tr>
             </table>
+
             <?php submit_button( __( 'Report IP to StopForumSpam', 'wilcosky-stop-forum-spam' ), 'secondary', 'wilcosky_sfs_report_submit' ); ?>
         </form>
     </div>
@@ -134,7 +139,7 @@ function wilcosky_stop_forum_spam_settings_page() {
 }
 
 /**
- * Process manual “Report IP” submissions.
+ * Handle manual “Report IP” submissions.
  */
 function wilcosky_sfs_handle_report_submission() {
     if ( empty( $_POST['wilcosky_sfs_report_submit'] ) ) {
@@ -160,15 +165,17 @@ function wilcosky_sfs_handle_report_submission() {
         return;
     }
 
+    // Submit to the correct StopForumSpam endpoint
     $response = wp_remote_post(
-        'https://api.stopforumspam.org/add',
+        'https://www.stopforumspam.com/add',
         array(
-            'body' => array(
+            'body'    => array(
                 'ip_addr'  => $ip,
                 'email'    => $email,
                 'evidence' => $evidence,
                 'api_key'  => $api_key,
             ),
+            'timeout' => 10,
         )
     );
 
