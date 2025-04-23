@@ -1,46 +1,62 @@
 <?php
 if ( ! class_exists( 'Wilcosky_Stop_Forum_Spam_Checker' ) ) {
     class Wilcosky_Stop_Forum_Spam_Checker {
+
         /**
-         * Query StopForumSpam + confidence;
-         * if ≥60%, report to Wordfence and block.
+         * Check visitor IP vs. StopForumSpam (with caching).
+         * Skip logged-in users and admin pages.
          */
         public function maybe_block_ip() {
+            if ( is_user_logged_in() || is_admin() ) {
+                return;
+            }
+
             $ip = $_SERVER['REMOTE_ADDR'] ?? '';
             if ( ! $ip ) {
                 return;
             }
 
-            $url = sprintf(
-                'http://api.stopforumspam.org/api?ip=%s&json&confidence',
-                rawurlencode( $ip )
-            );
-            $response = wp_remote_get( $url );
+            // Cache key for this IP
+            $transient_key = 'wilcosky_sfs_' . md5( $ip );
+            $result = get_transient( $transient_key );
 
-            if ( is_wp_error( $response ) ) {
-                return;
+            if ( false === $result ) {
+                // First check: call the API with &confidence
+                $url = sprintf(
+                    'http://api.stopforumspam.org/api?ip=%s&json&confidence',
+                    rawurlencode( $ip )
+                );
+                $response = wp_remote_get( $url );
+
+                if ( is_wp_error( $response ) ) {
+                    return; // API down? Fail open.
+                }
+
+                $body = wp_remote_retrieve_body( $response );
+                $data = json_decode( $body, true );
+
+                $result = array(
+                    'appears'    => $data['ip']['appears']    ?? 0,
+                    'confidence' => $data['ip']['confidence'] ?? 0,
+                );
+
+                // Cache for 1 hour
+                set_transient( $transient_key, $result, HOUR_IN_SECONDS );
             }
 
-            $data = json_decode( wp_remote_retrieve_body( $response ), true );
-            if ( empty( $data['ip']['confidence'] ) ) {
-                return;
-            }
+            // If marked in database & high confidence → block
+            if ( intval( $result['appears'] ) === 1 && floatval( $result['confidence'] ) >= 60.0 ) {
 
-            $confidence = floatval( $data['ip']['confidence'] );
-
-            // Threshold: 60%
-            if ( $confidence >= 60.0 ) {
-
-                // Report it to Wordfence Live Traffic
+                // Report to Wordfence Live Traffic (if active)
                 if ( class_exists( 'wfActivityReport' ) ) {
                     wfActivityReport::logBlockedIP( $ip );
                 }
 
-                // Kill the request
+                // Deny access
                 wp_die(
                     esc_html__( 'Access denied: Your IP has been flagged as suspicious.', 'wilcosky-stop-forum-spam' ),
                     esc_html__( 'Blocked', 'wilcosky-stop-forum-spam' ),
-                    [ 'response' => 403 ]
+                    array( 'response' => 403 )
                 );
             }
         }
