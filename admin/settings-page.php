@@ -35,7 +35,6 @@ function wilcosky_stop_forum_spam_settings_page() {
         <h1><?php esc_html_e( 'Stop Forum Spam Settings', 'wilcosky-stop-forum-spam' ); ?></h1>
 
         <?php
-        // Show any settings or report notices
         settings_errors( 'wilcosky_stop_forum_spam_settings' );
         settings_errors( 'wilcosky_sfs_report' );
         ?>
@@ -50,7 +49,7 @@ function wilcosky_stop_forum_spam_settings_page() {
                 <tr>
                     <th>
                         <label for="wilcosky_stop_forum_spam_api_key">
-                            <?php esc_html_e( 'API Key (optional)', 'wilcosky-stop-forum-spam' ); ?>
+                            <?php esc_html_e( 'API Key (required)', 'wilcosky-stop-forum-spam' ); ?>
                         </label>
                     </th>
                     <td>
@@ -62,7 +61,7 @@ function wilcosky_stop_forum_spam_settings_page() {
                             class="regular-text"
                         />
                         <p class="description">
-                            <?php esc_html_e( 'Your StopForumSpam API key (required for reporting).', 'wilcosky-stop-forum-spam' ); ?>
+                            <?php esc_html_e( 'Your StopForumSpam API key, required for reporting.', 'wilcosky-stop-forum-spam' ); ?>
                         </p>
                     </td>
                 </tr>
@@ -73,7 +72,7 @@ function wilcosky_stop_forum_spam_settings_page() {
         <hr>
 
         <!-- Manual Report Form -->
-        <h2><?php esc_html_e( 'Report an IP to StopForumSpam', 'wilcosky-stop-forum-spam' ); ?></h2>
+        <h2><?php esc_html_e( 'Report a Spammer to StopForumSpam', 'wilcosky-stop-forum-spam' ); ?></h2>
         <form
             method="post"
             action="<?php echo esc_url( admin_url( 'options-general.php?page=wilcosky-stop-forum-spam' ) ); ?>"
@@ -82,15 +81,15 @@ function wilcosky_stop_forum_spam_settings_page() {
             <table class="form-table">
                 <tr>
                     <th>
-                        <label for="wilcosky_sfs_report_ip_addr">
-                            <?php esc_html_e( 'IP Address', 'wilcosky-stop-forum-spam' ); ?>
+                        <label for="wilcosky_sfs_report_username">
+                            <?php esc_html_e( 'Spammer Username', 'wilcosky-stop-forum-spam' ); ?>
                         </label>
                     </th>
                     <td>
                         <input
-                            name="wilcosky_sfs_report_ip_addr"
+                            name="wilcosky_sfs_report_username"
                             type="text"
-                            id="wilcosky_sfs_report_ip_addr"
+                            id="wilcosky_sfs_report_username"
                             class="regular-text"
                         />
                     </td>
@@ -98,7 +97,7 @@ function wilcosky_stop_forum_spam_settings_page() {
                 <tr>
                     <th>
                         <label for="wilcosky_sfs_report_email">
-                            <?php esc_html_e( 'Your Email', 'wilcosky-stop-forum-spam' ); ?>
+                            <?php esc_html_e( 'Spammer Email', 'wilcosky-stop-forum-spam' ); ?>
                         </label>
                     </th>
                     <td>
@@ -106,7 +105,21 @@ function wilcosky_stop_forum_spam_settings_page() {
                             name="wilcosky_sfs_report_email"
                             type="email"
                             id="wilcosky_sfs_report_email"
-                            value="<?php echo esc_attr( get_option( 'admin_email' ) ); ?>"
+                            class="regular-text"
+                        />
+                    </td>
+                </tr>
+                <tr>
+                    <th>
+                        <label for="wilcosky_sfs_report_ip_addr">
+                            <?php esc_html_e( 'Spammer IP Address', 'wilcosky-stop-forum-spam' ); ?>
+                        </label>
+                    </th>
+                    <td>
+                        <input
+                            name="wilcosky_sfs_report_ip_addr"
+                            type="text"
+                            id="wilcosky_sfs_report_ip_addr"
                             class="regular-text"
                         />
                     </td>
@@ -125,18 +138,19 @@ function wilcosky_stop_forum_spam_settings_page() {
                             class="regular-text"
                         />
                         <p class="description">
-                            <?php esc_html_e( 'Notes or context (URLs, comments).', 'wilcosky-stop-forum-spam' ); ?>
+                            <?php esc_html_e( 'Context or URL proving the spammer activity.', 'wilcosky-stop-forum-spam' ); ?>
                         </p>
                     </td>
                 </tr>
             </table>
-            <?php submit_button( __( 'Report IP to StopForumSpam', 'wilcosky-stop-forum-spam' ), 'secondary', 'wilcosky_sfs_report_submit' ); ?>
+
+            <?php submit_button( __( 'Report Spammer', 'wilcosky-stop-forum-spam' ), 'secondary', 'wilcosky_sfs_report_submit' ); ?>
         </form>
     </div>
     <?php
 }
 
-/** Handle the manual report submission with robust URL encoding. */
+/** Handle the manual report submission including username. */
 function wilcosky_sfs_handle_report_submission() {
     if ( empty( $_POST['wilcosky_sfs_report_submit'] ) ) {
         return;
@@ -147,26 +161,29 @@ function wilcosky_sfs_handle_report_submission() {
     check_admin_referer( 'wilcosky_sfs_report_ip_action', 'wilcosky_sfs_report_ip_nonce' );
 
     // Sanitize inputs
-    $ip       = sanitize_text_field( $_POST['wilcosky_sfs_report_ip_addr'] );
-    $email    = sanitize_email(    $_POST['wilcosky_sfs_report_email']   );
+    $username = sanitize_text_field( $_POST['wilcosky_sfs_report_username'] );
+    $email    = sanitize_email(     $_POST['wilcosky_sfs_report_email']    );
+    $ip       = sanitize_text_field( $_POST['wilcosky_sfs_report_ip_addr']  );
     $evidence = sanitize_text_field( $_POST['wilcosky_sfs_report_evidence'] );
     $api_key  = get_option( 'wilcosky_stop_forum_spam_api_key', '' );
 
-    if ( empty( $ip ) || empty( $email ) || empty( $api_key ) ) {
+    // All five fields are required except evidence
+    if ( empty( $username ) || empty( $email ) || empty( $ip ) || empty( $api_key ) ) {
         add_settings_error(
             'wilcosky_sfs_report',
             'missing_fields',
-            __( 'Error: IP, Email, and API Key are required to report.', 'wilcosky-stop-forum-spam' ),
+            __( 'Error: Username, Email, IP, and API Key are required.', 'wilcosky-stop-forum-spam' ),
             'error'
         );
         return;
     }
 
-    // Build the RFC3986-encoded query
+    // Build a RFC3986-encoded query string including username :contentReference[oaicite:1]{index=1}
     $query = http_build_query(
         [
-            'ip_addr'  => $ip,
+            'username' => $username,
             'email'    => $email,
+            'ip_addr'  => $ip,
             'evidence' => $evidence,
             'api_key'  => $api_key,
         ],
@@ -175,7 +192,7 @@ function wilcosky_sfs_handle_report_submission() {
         PHP_QUERY_RFC3986
     );
 
-    // Send POST with proper Content-Type
+    // POST with proper headers
     $response = wp_remote_post(
         'https://www.stopforumspam.com/add.php',
         [
@@ -187,7 +204,7 @@ function wilcosky_sfs_handle_report_submission() {
         ]
     );
 
-    // Handle network error
+    // Network error?
     if ( is_wp_error( $response ) ) {
         add_settings_error(
             'wilcosky_sfs_report',
@@ -205,62 +222,23 @@ function wilcosky_sfs_handle_report_submission() {
     $body        = wp_remote_retrieve_body( $response );
     $retry_after = wp_remote_retrieve_header( $response, 'retry-after' );
 
-    // Detailed HTTP status handling
-    if ( 400 === $code ) {
+    // Handle specific status codes with clear messages...
+    if ( 403 === $code && stripos( $body, 'rate limit' ) !== false ) {
         add_settings_error(
             'wilcosky_sfs_report',
-            'bad_request',
-            __( '400 Bad Request: Check your inputs.', 'wilcosky-stop-forum-spam' ),
-            'error'
-        );
-        return;
-    }
-    if ( 401 === $code ) {
-        add_settings_error(
-            'wilcosky_sfs_report',
-            'unauthorized',
-            __( '401 Unauthorized: Invalid API key.', 'wilcosky-stop-forum-spam' ),
-            'error'
-        );
-        return;
-    }
-    if ( 403 === $code ) {
-        if ( stripos( $body, 'rate limit' ) !== false ) {
-            add_settings_error(
-                'wilcosky_sfs_report',
-                'rate_limited',
-                __( '403 Forbidden: Rate limit exceeded. Wait 24h before retry.', 'wilcosky-stop-forum-spam' ),
-                'error'
-            );
-        } else {
-            add_settings_error(
-                'wilcosky_sfs_report',
-                'forbidden',
-                __( '403 Forbidden: You may not report this IP.', 'wilcosky-stop-forum-spam' ),
-                'error'
-            );
-        }
-        return;
-    }
-    if ( 404 === $code ) {
-        add_settings_error(
-            'wilcosky_sfs_report',
-            'not_found',
-            __( '404 Not Found: Endpoint unavailable.', 'wilcosky-stop-forum-spam' ),
+            'rate_limited',
+            __( '403 Rate Limit Exceeded: Please wait 24 hours.', 'wilcosky-stop-forum-spam' ),
             'error'
         );
         return;
     }
     if ( 503 === $code ) {
-        if ( $retry_after ) {
-            $when = date_i18n( get_option( 'time_format' ), time() + intval( $retry_after ) );
-            $msg  = sprintf(
+        $msg = $retry_after
+            ? sprintf(
                 __( '503 Unavailable: Retry after %s.', 'wilcosky-stop-forum-spam' ),
-                esc_html( $when )
-            );
-        } else {
-            $msg = __( '503 Unavailable: Service down. Try later.', 'wilcosky-stop-forum-spam' );
-        }
+                date_i18n( get_option('time_format'), time() + intval( $retry_after ) )
+              )
+            : __( '503 Unavailable: Service down, please try later.', 'wilcosky-stop-forum-spam' );
         add_settings_error( 'wilcosky_sfs_report', 'service_unavailable', $msg, 'error' );
         return;
     }
@@ -268,13 +246,13 @@ function wilcosky_sfs_handle_report_submission() {
         add_settings_error(
             'wilcosky_sfs_report',
             'report_success',
-            __( 'Success: IP reported to StopForumSpam.', 'wilcosky-stop-forum-spam' ),
+            __( 'Success: Spammer reported to StopForumSpam.', 'wilcosky-stop-forum-spam' ),
             'updated'
         );
         return;
     }
 
-    // Fallback for other codes
+    // Fallback for other unexpected responses
     add_settings_error(
         'wilcosky_sfs_report',
         'unexpected_response',
