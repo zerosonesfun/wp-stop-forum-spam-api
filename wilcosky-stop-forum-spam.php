@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name:     Wilcosky Stop Forum Spam API
- * Description:     Blocks visitors whose IPs appear in the StopForumSpam database (with confidence scoring), reports to Wordfence Live Traffic, and offers a manual “report IP” form.
- * Version:         1.2.1
+ * Description:     Blocks visitors whose IPs appear in the Stop Forum Spam database (with confidence scoring), and offers a way to report new spammers back to Stop Forum Spam.
+ * Version:         1.2.2
  * Author:          Billy Wilcosky
  * Text Domain:     wilcosky-stop-forum-spam
  */
