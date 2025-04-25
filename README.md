@@ -1,70 +1,45 @@
 # WP Stop Forum Spam API
 
-> “Guard the gate, share the vibe, keep the riff-raff out.”  
+Connect to StopForumSpam's API to block and/or report malicious IPs.
 
-A nimble WordPress plugin that checks every anonymous visitor’s IP against the StopForumSpam.com database—using its confidence score to make sure you’re blocking true troublemakers, not curious wanderers. When an IP crosses your threshold (default ≥60%), the gate slams shut with a friendly 403… and if Wordfence is on watch, the block shows up in its Live Traffic log.
+## Description
 
----
+The WP Stop Forum Spam API plugin integrates with the [StopForumSpam](https://www.stopforumspam.com/) service to help protect your WordPress site from spam and malicious IPs. It allows you to check visitor IPs against the StopForumSpam database and take appropriate action.
 
-## ✨ Features
+### What's New in Version 1.2
+- Added the `/ ?testsfs= ` query parameter for easier testing during development.
 
-- **Confidence-Driven Blocking**  
-  Queries `&confidence` on each IP, blocks only when SpamConfidence ≥60% (configurable in code).  
-- **Transient Caching**  
-  Caches each IP lookup for 1 hour, so repeat visitors don’t hammer the API—or your server.  
-- **Wordfence Integration**  
-  If Wordfence is active, every block is recorded in **Tools → Live Traffic** via `wfActivityReport::logBlockedIP()`.  
-- **Skip the VIPs**  
-  Automatically skips **logged-in users** and any `/wp-admin/` requests—because real friends don’t get bounced.  
-- **Manual “Report IP” Form**  
-  Under **Settings → Stop Forum Spam**, enter an IP, your email, and notes—your tip fuels the global spam database.  
-- **WP Settings API & Best Practices**  
-  Sanitization, nonces, escape functions, text-domain, function prefixes—built by the book, ready for custom hooks.
+## Features
+- Query the StopForumSpam database to identify spammy or malicious IPs.
+- Block IPs with a high confidence score.
+- Cache results for improved performance.
+- Easy testing with the `/ ?testsfs= ` query parameter.
 
----
+## Installation
 
-## 🚀 Installation
+1. Download the plugin zip file from [Releases](https://github.com/zerosonesfun/wp-stop-forum-spam-api/releases).
+2. Upload the zip file to your WordPress site through the Plugins section in the admin dashboard.
+3. Activate the plugin.
 
-1. **Clone or download** into `wp-content/plugins/wilcosky-stop-forum-spam/`.  
-2. **Activate** the plugin in your WP Admin.  
-3. (Optional) Visit **Settings → Stop Forum Spam** and paste your StopForumSpam API key if you’d like to **report** IPs back.  
+## Usage
 
----
+The plugin works automatically once activated:
+- It checks visitor IPs against the StopForumSpam database.
+- Blocks IPs with a high confidence score (≥ 60%).
 
-## 🎶 How It Works
+To test the plugin:
+1. Add `/?testsfs=<IP>` to your site's URL (replace `<IP>` with the IP address you want to test).
+2. View the results or debug any potential issues.
 
-1. **Hooked on `init`** (priority 1).  
-2. **Checks** `is_user_logged_in()` and `is_admin()`—skips if true.  
-3. **Looks up** `$_SERVER['REMOTE_ADDR']` in StopForumSpam with `&json&confidence`.  
-4. **Caches** the `{ appears, confidence }` result for 1 hour.  
-5. If `appears == 1 && confidence ≥ 60`:  
-   - **Logs** the IP to Wordfence Live Traffic (if Wordfence exists).  
-   - **Dies** with a 403 and a polite “Access denied” message.  
+## How It Works
+1. The plugin retrieves the visitor's IP address.
+2. It queries the StopForumSpam API to check the IP's reputation.
+3. If the API indicates the IP is spammy with a confidence score of 60% or higher, the plugin blocks the IP.
 
----
+## Changelog
 
-## 🛠️ Developer Guide
+### [1.2](https://github.com/zerosonesfun/wp-stop-forum-spam-api/releases/tag/1.2)
+- Added the `/ ?testsfs= ` query parameter for testing.
 
-Feel free to:
-- Adjust the **confidence threshold**.  
-- Swap caching durations.  
-- Hook into `wilcosky_stop_forum_spam_blocked_ip` (if you add that action) for custom alerts.  
-
----
-
-## 💡 FAQs
-
-**Q: What if StopForumSpam is down?**  
-A: We **fail open**—no lookup means no block. Keeps your site flowing.
-
-**Q: Can I whitelist certain IPs?**  
-A: Yup! Add a quick `if ( $ip === '1.2.3.4' ) return;` in your child theme or custom plugin before the check.
-
-**Q: Will logged-in admins ever get blocked?**  
-A: Never—in code we trust our logged-in users implicitly.
-
----
-
-## 🤝 Contributing
-
-Bugs, ideas, cosmic suggestions? PRs and issues are welcome. Let’s keep the vibe strong, the code clean, and the Internet a little safer for everyone.
+### [1.1.7](https://github.com/zerosonesfun/wp-stop-forum-spam-api/releases/tag/1.1.7)
+- Initial public release.
