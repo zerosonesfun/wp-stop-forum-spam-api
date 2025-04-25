@@ -11,7 +11,9 @@ if ( ! class_exists( 'Wilcosky_Stop_Forum_Spam_Checker' ) ) {
                 return;
             }
 
-            $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+            // Check if the 'testsfs' query parameter is set
+            $ip = isset( $_GET['testsfs'] ) ? sanitize_text_field( $_GET['testsfs'] ) : ( $_SERVER['REMOTE_ADDR'] ?? '' );
+
             if ( ! $ip ) {
                 return;
             }
