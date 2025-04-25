@@ -47,12 +47,16 @@ if ( ! class_exists( 'Wilcosky_Stop_Forum_Spam_Checker' ) ) {
             // If marked in database & high confidence → block
             if ( intval( $result['appears'] ) === 1 && floatval( $result['confidence'] ) >= 60.0 ) {
 
-                // Report to Wordfence Live Traffic (if active)
-                if ( class_exists( 'wfActivityReport' ) ) {
-                    wfActivityReport::logBlockedIP( $ip );
+                // If Wordfence is active, use their built-in logger
+                if ( class_exists( 'wfLog' ) ) {
+                    $wfLog = new wfLog();
+                    $reason = 'Wilcosky StopForumSpam: Confidence score above 60';
+                    $wfLog->blockIP( $ip, $reason );
+                    $wfLog->do503( 60, 'You have been blocked due to suspicious activity.' );
+                    exit;
                 }
 
-                // Deny access
+                // Otherwise, fall back to a generic block
                 wp_die(
                     esc_html__( 'Access denied: Your IP has been flagged as suspicious.', 'wilcosky-stop-forum-spam' ),
                     esc_html__( 'Blocked', 'wilcosky-stop-forum-spam' ),
