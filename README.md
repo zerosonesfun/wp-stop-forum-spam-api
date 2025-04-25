@@ -31,11 +31,6 @@ To test the plugin:
 1. Add `/?testsfs=<IP>` to your site's URL (replace `<IP>` with the IP address you want to test).
 2. View the results or debug any potential issues.
 
-## How It Works
-1. The plugin retrieves the visitor's IP address.
-2. It queries the StopForumSpam API to check the IP's reputation.
-3. If the API indicates the IP is spammy with a confidence score of 60% or higher, the plugin blocks the IP.
-
 ## Changelog
 
 ### [1.2](https://github.com/zerosonesfun/wp-stop-forum-spam-api/releases/tag/1.2)
