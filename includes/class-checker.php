@@ -15,6 +15,10 @@ if ( ! class_exists( 'Wilcosky_Stop_Forum_Spam_Checker' ) ) {
             $ip = isset( $_GET['testsfs'] ) ? sanitize_text_field( $_GET['testsfs'] ) : ( $_SERVER['REMOTE_ADDR'] ?? '' );
 
             if ( ! $ip ) {
+                error_log( 'No IP address found to check.' );
+                if ( WP_DEBUG ) {
+                    echo 'Error: No IP address found to check.';
+                }
                 return;
             }
 
@@ -31,14 +35,27 @@ if ( ! class_exists( 'Wilcosky_Stop_Forum_Spam_Checker' ) ) {
                 $response = wp_remote_get( $url );
 
                 if ( is_wp_error( $response ) ) {
+                    $error_message = $response->get_error_message();
+                    error_log( 'API error: ' . $error_message );
+                    if ( WP_DEBUG ) {
+                        echo 'API error: ' . esc_html( $error_message );
+                    }
                     return; // API down? Fail open.
                 }
 
                 $body = wp_remote_retrieve_body( $response );
                 $data = json_decode( $body, true );
 
+                if ( json_last_error() !== JSON_ERROR_NONE ) {
+                    error_log( 'JSON decode error: ' . json_last_error_msg() );
+                    if ( WP_DEBUG ) {
+                        echo 'JSON decode error: ' . esc_html( json_last_error_msg() );
+                    }
+                    return;
+                }
+
                 $result = array(
-                    'appears'    => $data['ip']['appears']    ?? 0,
+                    'appears'    => $data['ip']['appears'] ?? 0,
                     'confidence' => $data['ip']['confidence'] ?? 0,
                 );
 
@@ -51,11 +68,19 @@ if ( ! class_exists( 'Wilcosky_Stop_Forum_Spam_Checker' ) ) {
 
                 // If Wordfence is active, use their built-in logger
                 if ( class_exists( 'wfLog' ) ) {
-                    $wfLog = new wfLog();
-                    $reason = 'Wilcosky StopForumSpam: Confidence score above 60';
-                    $wfLog->blockIP( $ip, $reason );
-                    $wfLog->do503( 60, 'You have been blocked due to suspicious activity.' );
-                    exit;
+                    try {
+                        $wfLog = new wfLog();
+                        $reason = 'Wilcosky StopForumSpam: Confidence score above 60';
+                        $wfLog->blockIP( $ip, $reason );
+                        $wfLog->do503( 60, 'You have been blocked due to suspicious activity.' );
+                        exit;
+                    } catch ( Exception $e ) {
+                        error_log( 'Wordfence error: ' . $e->getMessage() );
+                        if ( WP_DEBUG ) {
+                            echo 'Wordfence error: ' . esc_html( $e->getMessage() );
+                        }
+                        return;
+                    }
                 }
 
                 // Otherwise, fall back to a generic block
